@@ -3,6 +3,7 @@ import numpy as np
 import argparse
 import math
 from scipy.optimize import linear_sum_assignment
+import os
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--webcam', help="True/False", default=False)
@@ -44,6 +45,11 @@ def detect_crash(net, output_layers, cap):
     vehicle_positions = []
     prev_vehicle_positions = []
     frame_count = 0
+    crash_count = 0
+
+    # Create the crash_frames folder if it doesn't exist
+    if not os.path.exists("crash_frames"):
+        os.makedirs("crash_frames")
 
     while True:
         ret, frame = cap.read()
@@ -56,7 +62,7 @@ def detect_crash(net, output_layers, cap):
         net.setInput(blob)
         outs = net.forward(output_layers)
 
-        conf_threshold = 0.25
+        conf_threshold = 0.25   ### Adjust as per your requirement
         class_ids = []
         confidences = []
         boxes = []
@@ -89,12 +95,18 @@ def detect_crash(net, output_layers, cap):
                 current_pos = vehicle_positions[col]
                 distance = euclidean_distance(prev_pos, current_pos)
 
-                if distance < 50:
+                if distance < 10:   ### Adjust as per your requirement
                     velocity = cost_matrix[row, col]
 
-                    if velocity > 25:
+                    if velocity > 9:   ### Adjust as per your requirement
                         print("Crash detected")
-                    break
+                        cv2.putText(frame, "Crash Detected", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 4)
+                        # Save the frame as an image file
+                        crash_count += 1
+                        crash_frame_path = f"crash_frames/crash_{crash_count:04d}.png"
+                        cv2.imwrite(crash_frame_path, frame)
+                        print(f"Crash frame saved to {crash_frame_path}")
+                        break
 
         prev_vehicle_positions = vehicle_positions
         frame_count += 1
